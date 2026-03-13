@@ -1,0 +1,59 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Concert Radar — API Setup",
+        "description": "Enter your API credentials. Get a free Ticketmaster API key at developer.ticketmaster.com.",
+        "data": {
+          "tm_api_key": "Ticketmaster API Key",
+          "bit_app_id": "Bandsintown App ID"
+        },
+        "data_description": {
+          "tm_api_key": "Your free Ticketmaster Discovery API key",
+          "bit_app_id": "Any identifier string (default: concert_radar)"
+        }
+      },
+      "artists": {
+        "title": "Concert Radar — Artists & Location",
+        "description": "Configure the artists you want to track and your search radius.",
+        "data": {
+          "artists": "Artists to track (comma separated)",
+          "radius": "Search radius",
+          "radius_unit": "Radius unit",
+          "use_ha_location": "Use Home Assistant home location",
+          "latitude": "Latitude (if not using HA location)",
+          "longitude": "Longitude (if not using HA location)",
+          "poll_interval": "Poll interval (hours)",
+          "notifications": "Enable persistent notifications",
+          "lookahead_days": "Lookahead window (days)"
+        }
+      }
+    },
+    "error": {
+      "invalid_api_key": "Invalid Ticketmaster API key. Please check your key and try again.",
+      "no_artists": "Please enter at least one artist name."
+    },
+    "abort": {
+      "already_configured": "Concert Radar is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Concert Radar — Options",
+        "description": "Update your Concert Radar settings.",
+        "data": {
+          "artists": "Artists to track (comma separated)",
+          "radius": "Search radius",
+          "radius_unit": "Radius unit",
+          "poll_interval": "Poll interval (hours)",
+          "notifications": "Enable persistent notifications",
+          "lookahead_days": "Lookahead window (days)"
+        }
+      }
+    },
+    "error": {
+      "no_artists": "Please enter at least one artist name."
+    }
+  }
+}

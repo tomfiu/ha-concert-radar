@@ -1,0 +1,12 @@
+{
+  "domain": "concert_radar",
+  "name": "Concert Radar",
+  "version": "1.0.0",
+  "documentation": "https://github.com/tomfiu/ha-concert-radar",
+  "issue_tracker": "https://github.com/tomfiu/ha-concert-radar/issues",
+  "requirements": [],
+  "dependencies": [],
+  "codeowners": ["@tomfiu"],
+  "iot_class": "cloud_polling",
+  "config_flow": true
+}

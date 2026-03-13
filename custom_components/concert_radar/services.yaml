@@ -1,0 +1,26 @@
+refresh:
+  name: Refresh Concert Data
+  description: Immediately poll APIs for new concert data for all tracked artists.
+
+add_artist:
+  name: Add Artist
+  description: Add a new artist to the Concert Radar watchlist.
+  fields:
+    artist:
+      name: Artist Name
+      description: The name of the artist or band to add.
+      required: true
+      example: "Portishead"
+      selector:
+        text:
+
+remove_artist:
+  name: Remove Artist
+  description: Remove an artist from the Concert Radar watchlist.
+  fields:
+    artist:
+      name: Artist Name
+      description: The name of the artist to remove.
+      required: true
+      selector:
+        text:
