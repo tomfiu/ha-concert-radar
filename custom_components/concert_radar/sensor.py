@@ -175,9 +175,12 @@ class ConcertRadarUpcomingCountSensor(ConcertRadarBaseSensor):
         )
         concerts = [
             {
+                ATTR_EVENT_NAME: e.event_name,
                 "date": e.event_date.isoformat(),
-                "venue": f"{e.venue_name}, {e.venue_city}",
+                ATTR_VENUE_NAME: e.venue_name,
+                ATTR_VENUE_CITY: e.venue_city,
                 ATTR_DISTANCE_KM: e.distance_km,
+                ATTR_SOURCE: e.source,
                 ATTR_TICKET_URL: e.ticket_url,
             }
             for e in events

@@ -90,11 +90,13 @@ class ConcertRadarHasNearbyConcertBinarySensor(ConcertRadarBaseBinarySensor):
         if self.coordinator.data:
             events = self.coordinator.data.get(self._artist, [])
             if events:
-                attrs["next_concert_date"] = events[0].event_date.isoformat()
-                attrs["next_concert_venue"] = (
-                    f"{events[0].venue_name}, {events[0].venue_city}"
-                )
-                attrs[ATTR_DAYS_UNTIL] = events[0].days_until
+                next_event = events[0]
+                attrs["next_concert_event_name"] = next_event.event_name
+                attrs["next_concert_date"] = next_event.event_date.isoformat()
+                attrs["next_concert_venue"] = next_event.venue_name
+                attrs["next_concert_city"] = next_event.venue_city
+                attrs["next_concert_source"] = next_event.source
+                attrs[ATTR_DAYS_UNTIL] = next_event.days_until
         return attrs
 
 
