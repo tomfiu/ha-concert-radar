@@ -9,7 +9,7 @@
           "bit_app_id": "Bandsintown App ID"
         },
         "data_description": {
-          "tm_api_key": "Your free Ticketmaster Discovery API key",
+          "tm_api_key": "Your Consumer Key from the Ticketmaster Developer Portal (this is your API key)",
           "bit_app_id": "Any identifier string (default: concert_radar)"
         }
       },
