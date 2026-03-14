@@ -91,6 +91,9 @@ For each tracked artist, the following entities are created:
 |---|---|---|
 | `sensor.concert_radar_{artist}_next_concert` | Sensor | Date/time of next nearby concert |
 | `sensor.concert_radar_{artist}_upcoming_count` | Sensor | Number of upcoming concerts |
+| `sensor.concert_radar_{artist}_venue` | Sensor | Venue name of the next concert |
+| `sensor.concert_radar_{artist}_city` | Sensor | Location of next concert as `City, Country` |
+| `sensor.concert_radar_{artist}_distance` | Sensor | Distance from home to next concert (km or mi) |
 | `binary_sensor.concert_radar_{artist}_has_nearby_concert` | Binary Sensor | `on` if any concert nearby |
 
 Plus global entities:
@@ -118,9 +121,10 @@ action:
     data:
       title: "{{ trigger.event.data.artist }} Concert Alert!"
       message: >
-        Playing at {{ trigger.event.data.venue_name }}, {{ trigger.event.data.venue_city }}
+        Playing at {{ trigger.event.data.venue_name }},
+        {{ trigger.event.data.venue_city }}, {{ trigger.event.data.venue_country }}
         on {{ trigger.event.data.event_date | as_timestamp | timestamp_custom('%B %d, %Y') }}
-        — {{ trigger.event.data.distance_km | round(0) }}km away
+        — {{ trigger.event.data.distance_km | round(0) }} km away
       data:
         url: "{{ trigger.event.data.ticket_url }}"
 ```
@@ -160,7 +164,8 @@ content: >
   {% set s = states.sensor["concert_radar_" + artist + "_next_concert"] %}
   {% if s.state != "unknown" %}
   **{{ s.attributes.artist }}** at **{{ s.attributes.venue_name }}**
-  {{ s.attributes.venue_city }} — {{ s.attributes.distance_km | round(1) }} km away
+  {{ states("sensor.concert_radar_" + artist + "_city") }}
+  — {{ states("sensor.concert_radar_" + artist + "_distance") }} away
   {{ s.state | as_timestamp | timestamp_custom('%A, %B %d %Y at %H:%M') }}
   {% if s.attributes.price_min %}
   From {{ s.attributes.price_min }} {{ s.attributes.currency }}
