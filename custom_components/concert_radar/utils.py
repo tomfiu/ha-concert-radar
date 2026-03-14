@@ -49,6 +49,15 @@ def km_to_miles(km: float) -> float:
     return round(km * 0.621371, 1)
 
 
+def is_in_ignore_list(event: ConcertEvent, ignore_list: list[str]) -> bool:
+    """Return True if the event's artist matches any entry in the ignore list.
+
+    Comparison is case-insensitive and strips surrounding whitespace.
+    """
+    normalized = [name.strip().lower() for name in ignore_list if name.strip()]
+    return event.artist.strip().lower() in normalized
+
+
 def is_tribute_or_revival(event: ConcertEvent) -> bool:
     """Return True if the event appears to be a tribute, revival, or cover act.
 

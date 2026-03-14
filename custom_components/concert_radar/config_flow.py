@@ -15,6 +15,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .api.ticketmaster import TicketmasterClient
 from .const import (
     CONF_ARTISTS,
+    CONF_BAND_IGNORE_LIST,
     CONF_BIT_APP_ID,
     CONF_IGNORE_TRIBUTE_BANDS,
     CONF_LATITUDE,
@@ -26,6 +27,7 @@ from .const import (
     CONF_RADIUS_UNIT,
     CONF_TM_API_KEY,
     CONF_USE_HA_LOCATION,
+    DEFAULT_BAND_IGNORE_LIST,
     DEFAULT_BANDSINTOWN_APP_ID,
     DEFAULT_IGNORE_TRIBUTE_BANDS,
     DEFAULT_LOOKAHEAD_DAYS,
@@ -100,6 +102,8 @@ class ConcertRadarConfigFlow(ConfigFlow, domain=DOMAIN):
             if not artists:
                 errors[CONF_ARTISTS] = "no_artists"
             else:
+                ignore_list_str = user_input.get(CONF_BAND_IGNORE_LIST, "")
+                ignore_list = [b.strip() for b in ignore_list_str.split(",") if b.strip()]
                 data = {
                     **self._api_data,
                     CONF_ARTISTS: artists,
@@ -118,6 +122,7 @@ class ConcertRadarConfigFlow(ConfigFlow, domain=DOMAIN):
                     CONF_IGNORE_TRIBUTE_BANDS: user_input.get(
                         CONF_IGNORE_TRIBUTE_BANDS, DEFAULT_IGNORE_TRIBUTE_BANDS
                     ),
+                    CONF_BAND_IGNORE_LIST: ignore_list,
                 }
 
                 if not user_input.get(CONF_USE_HA_LOCATION, True):
@@ -157,6 +162,7 @@ class ConcertRadarConfigFlow(ConfigFlow, domain=DOMAIN):
                         CONF_IGNORE_TRIBUTE_BANDS,
                         default=DEFAULT_IGNORE_TRIBUTE_BANDS,
                     ): bool,
+                    vol.Optional(CONF_BAND_IGNORE_LIST, default=""): str,
                 }
             ),
             errors=errors,
@@ -183,6 +189,8 @@ class ConcertRadarOptionsFlow(OptionsFlow):
             if not artists:
                 errors[CONF_ARTISTS] = "no_artists"
             else:
+                ignore_list_str = user_input.get(CONF_BAND_IGNORE_LIST, "")
+                ignore_list = [b.strip() for b in ignore_list_str.split(",") if b.strip()]
                 return self.async_create_entry(
                     title="",
                     data={
@@ -201,11 +209,13 @@ class ConcertRadarOptionsFlow(OptionsFlow):
                         CONF_IGNORE_TRIBUTE_BANDS: user_input.get(
                             CONF_IGNORE_TRIBUTE_BANDS, DEFAULT_IGNORE_TRIBUTE_BANDS
                         ),
+                        CONF_BAND_IGNORE_LIST: ignore_list,
                     },
                 )
 
         current = {**self._config_entry.data, **self._config_entry.options}
         artists_default = ", ".join(current.get(CONF_ARTISTS, []))
+        ignore_list_default = ", ".join(current.get(CONF_BAND_IGNORE_LIST, DEFAULT_BAND_IGNORE_LIST))
 
         return self.async_show_form(
             step_id="init",
@@ -242,6 +252,10 @@ class ConcertRadarOptionsFlow(OptionsFlow):
                             CONF_IGNORE_TRIBUTE_BANDS, DEFAULT_IGNORE_TRIBUTE_BANDS
                         ),
                     ): bool,
+                    vol.Optional(
+                        CONF_BAND_IGNORE_LIST,
+                        default=ignore_list_default,
+                    ): str,
                 }
             ),
             errors=errors,
