@@ -6,6 +6,7 @@ from custom_components.concert_radar.models import ConcertEvent
 from custom_components.concert_radar.utils import (
     deduplicate_events,
     haversine,
+    is_tribute_or_revival,
     km_to_miles,
     slugify_artist,
 )
@@ -96,6 +97,71 @@ def test_deduplicate_events_with_duplicates():
     result = deduplicate_events(events)
     assert len(result) == 1
     assert result[0].source == "ticketmaster"
+
+
+def _make_tribute_event(artist: str, event_name: str | None = None) -> ConcertEvent:
+    """Helper to create a ConcertEvent with a custom artist and event name."""
+    return ConcertEvent(
+        event_id="1",
+        source="ticketmaster",
+        artist=artist,
+        event_date=datetime.fromisoformat("2025-06-15T19:00:00"),
+        venue_name="Test Venue",
+        venue_city="London",
+        venue_country="GB",
+        venue_latitude=51.5,
+        venue_longitude=-0.1,
+        distance_km=10.0,
+        event_name=event_name,
+    )
+
+
+# --- is_tribute_or_revival ---
+
+def test_tribute_keyword_in_artist_name():
+    assert is_tribute_or_revival(_make_tribute_event("Tribute to Queen")) is True
+
+
+def test_revival_keyword_in_artist_name():
+    assert is_tribute_or_revival(_make_tribute_event("Queen Revival")) is True
+
+
+def test_salute_keyword_in_artist_name():
+    assert is_tribute_or_revival(_make_tribute_event("A Salute to AC/DC")) is True
+
+
+def test_cover_band_keyword_in_artist_name():
+    assert is_tribute_or_revival(_make_tribute_event("The Beatles Cover Band")) is True
+
+
+def test_tribute_keyword_in_event_name():
+    event = _make_tribute_event("Taylor Swift", "A Tribute to Taylor Swift")
+    assert is_tribute_or_revival(event) is True
+
+
+def test_revival_keyword_in_event_name():
+    event = _make_tribute_event("Queen", "Queen Revival Night")
+    assert is_tribute_or_revival(event) is True
+
+
+def test_genuine_artist_no_event_name():
+    assert is_tribute_or_revival(_make_tribute_event("Queen")) is False
+
+
+def test_genuine_artist_with_innocent_event_name():
+    event = _make_tribute_event("Radiohead", "Radiohead Live 2025")
+    assert is_tribute_or_revival(event) is False
+
+
+def test_case_insensitive_matching():
+    assert is_tribute_or_revival(_make_tribute_event("QUEEN REVIVAL")) is True
+    assert is_tribute_or_revival(_make_tribute_event("queen revival")) is True
+
+
+def test_tribute_not_matched_as_substring():
+    """'tribute' must match as a whole word, not inside another word."""
+    event = _make_tribute_event("Distributive Jazz Trio")
+    assert is_tribute_or_revival(event) is False
 
 
 def test_deduplicate_events_sorted_by_date():
