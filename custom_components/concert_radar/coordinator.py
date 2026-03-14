@@ -19,6 +19,7 @@ from .api.bandsintown import BandsinTownClient
 from .api.ticketmaster import TicketmasterClient
 from .const import (
     CONF_ARTISTS,
+    CONF_BAND_IGNORE_LIST,
     CONF_BIT_APP_ID,
     CONF_IGNORE_TRIBUTE_BANDS,
     CONF_LATITUDE,
@@ -29,6 +30,7 @@ from .const import (
     CONF_RADIUS,
     CONF_TM_API_KEY,
     CONF_USE_HA_LOCATION,
+    DEFAULT_BAND_IGNORE_LIST,
     DEFAULT_BANDSINTOWN_APP_ID,
     DEFAULT_IGNORE_TRIBUTE_BANDS,
     DEFAULT_LOOKAHEAD_DAYS,
@@ -39,7 +41,7 @@ from .const import (
     EVENT_NEW_CONCERT,
 )
 from .models import ConcertEvent
-from .utils import deduplicate_events, is_tribute_or_revival
+from .utils import deduplicate_events, is_in_ignore_list, is_tribute_or_revival
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -108,6 +110,7 @@ class ConcertRadarCoordinator(DataUpdateCoordinator[dict[str, list[ConcertEvent]
         ignore_tributes = self._config.get(
             CONF_IGNORE_TRIBUTE_BANDS, DEFAULT_IGNORE_TRIBUTE_BANDS
         )
+        band_ignore_list = self._config.get(CONF_BAND_IGNORE_LIST, DEFAULT_BAND_IGNORE_LIST)
 
         async def fetch_artist(artist: str) -> tuple[str, list[ConcertEvent]]:
             tm_result, bit_result = await asyncio.gather(
@@ -134,6 +137,15 @@ class ConcertRadarCoordinator(DataUpdateCoordinator[dict[str, list[ConcertEvent]
                 if len(filtered) < len(deduped):
                     _LOGGER.debug(
                         "Filtered %d tribute/revival event(s) for '%s'",
+                        len(deduped) - len(filtered),
+                        artist,
+                    )
+                deduped = filtered
+            if band_ignore_list:
+                filtered = [e for e in deduped if not is_in_ignore_list(e, band_ignore_list)]
+                if len(filtered) < len(deduped):
+                    _LOGGER.debug(
+                        "Filtered %d ignored band event(s) for '%s'",
                         len(deduped) - len(filtered),
                         artist,
                     )

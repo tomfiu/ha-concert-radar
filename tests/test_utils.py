@@ -6,6 +6,7 @@ from custom_components.concert_radar.models import ConcertEvent
 from custom_components.concert_radar.utils import (
     deduplicate_events,
     haversine,
+    is_in_ignore_list,
     is_tribute_or_revival,
     km_to_miles,
     slugify_artist,
@@ -162,6 +163,39 @@ def test_tribute_not_matched_as_substring():
     """'tribute' must match as a whole word, not inside another word."""
     event = _make_tribute_event("Distributive Jazz Trio")
     assert is_tribute_or_revival(event) is False
+
+
+# --- is_in_ignore_list ---
+
+def test_ignore_list_matches_exact_name():
+    event = _make_tribute_event("The Rolling Stones")
+    assert is_in_ignore_list(event, ["The Rolling Stones"]) is True
+
+
+def test_ignore_list_case_insensitive():
+    event = _make_tribute_event("The Rolling Stones")
+    assert is_in_ignore_list(event, ["the rolling stones"]) is True
+    assert is_in_ignore_list(event, ["THE ROLLING STONES"]) is True
+
+
+def test_ignore_list_strips_whitespace():
+    event = _make_tribute_event("The Rolling Stones")
+    assert is_in_ignore_list(event, ["  The Rolling Stones  "]) is True
+
+
+def test_ignore_list_no_match():
+    event = _make_tribute_event("Radiohead")
+    assert is_in_ignore_list(event, ["The Rolling Stones", "Queen"]) is False
+
+
+def test_ignore_list_empty():
+    event = _make_tribute_event("Radiohead")
+    assert is_in_ignore_list(event, []) is False
+
+
+def test_ignore_list_multiple_entries():
+    event = _make_tribute_event("Queen")
+    assert is_in_ignore_list(event, ["The Beatles", "Queen", "Radiohead"]) is True
 
 
 def test_deduplicate_events_sorted_by_date():

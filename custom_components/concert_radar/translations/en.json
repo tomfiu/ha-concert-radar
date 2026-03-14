@@ -26,7 +26,8 @@
           "poll_interval": "Poll interval (hours)",
           "notifications": "Enable persistent notifications",
           "lookahead_days": "Lookahead window (days)",
-          "ignore_tribute_bands": "Ignore tribute, revival and cover bands"
+          "ignore_tribute_bands": "Ignore tribute, revival and cover bands",
+          "band_ignore_list": "Additional bands to ignore (comma separated)"
         }
       }
     },
@@ -50,7 +51,8 @@
           "poll_interval": "Poll interval (hours)",
           "notifications": "Enable persistent notifications",
           "lookahead_days": "Lookahead window (days)",
-          "ignore_tribute_bands": "Ignore tribute, revival and cover bands"
+          "ignore_tribute_bands": "Ignore tribute, revival and cover bands",
+          "band_ignore_list": "Additional bands to ignore (comma separated)"
         }
       }
     },

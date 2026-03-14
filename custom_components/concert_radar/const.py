@@ -9,6 +9,7 @@ DEFAULT_LOOKAHEAD_DAYS = 180
 DEFAULT_BANDSINTOWN_APP_ID = "concert_radar"
 DEFAULT_RADIUS_UNIT = "km"
 DEFAULT_IGNORE_TRIBUTE_BANDS = False
+DEFAULT_BAND_IGNORE_LIST: list[str] = []
 
 CONF_ARTISTS = "artists"
 CONF_RADIUS = "radius"
@@ -22,6 +23,7 @@ CONF_LONGITUDE = "longitude"
 CONF_NOTIFICATIONS = "notifications"
 CONF_LOOKAHEAD_DAYS = "lookahead_days"
 CONF_IGNORE_TRIBUTE_BANDS = "ignore_tribute_bands"
+CONF_BAND_IGNORE_LIST = "band_ignore_list"
 
 EVENT_NEW_CONCERT = "concert_radar_new_concert"
 EVENT_ARTIST_ON_TOUR = "concert_radar_artist_on_tour"
