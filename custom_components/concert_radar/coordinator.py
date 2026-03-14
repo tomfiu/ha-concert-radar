@@ -20,6 +20,7 @@ from .api.ticketmaster import TicketmasterClient
 from .const import (
     CONF_ARTISTS,
     CONF_BIT_APP_ID,
+    CONF_IGNORE_TRIBUTE_BANDS,
     CONF_LATITUDE,
     CONF_LONGITUDE,
     CONF_LOOKAHEAD_DAYS,
@@ -29,6 +30,7 @@ from .const import (
     CONF_TM_API_KEY,
     CONF_USE_HA_LOCATION,
     DEFAULT_BANDSINTOWN_APP_ID,
+    DEFAULT_IGNORE_TRIBUTE_BANDS,
     DEFAULT_LOOKAHEAD_DAYS,
     DEFAULT_POLL_INTERVAL_HOURS,
     DEFAULT_RADIUS_KM,
@@ -37,7 +39,7 @@ from .const import (
     EVENT_NEW_CONCERT,
 )
 from .models import ConcertEvent
-from .utils import deduplicate_events
+from .utils import deduplicate_events, is_tribute_or_revival
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -103,6 +105,10 @@ class ConcertRadarCoordinator(DataUpdateCoordinator[dict[str, list[ConcertEvent]
 
         results: dict[str, list[ConcertEvent]] = {}
 
+        ignore_tributes = self._config.get(
+            CONF_IGNORE_TRIBUTE_BANDS, DEFAULT_IGNORE_TRIBUTE_BANDS
+        )
+
         async def fetch_artist(artist: str) -> tuple[str, list[ConcertEvent]]:
             tm_result, bit_result = await asyncio.gather(
                 self._tm_client.get_events(artist, lat, lon, radius_km, lookahead),
@@ -122,7 +128,17 @@ class ConcertRadarCoordinator(DataUpdateCoordinator[dict[str, list[ConcertEvent]
                 _LOGGER.warning(
                     "Bandsintown fetch failed for '%s': %s", artist, bit_result
                 )
-            return artist, deduplicate_events(events)
+            deduped = deduplicate_events(events)
+            if ignore_tributes:
+                filtered = [e for e in deduped if not is_tribute_or_revival(e)]
+                if len(filtered) < len(deduped):
+                    _LOGGER.debug(
+                        "Filtered %d tribute/revival event(s) for '%s'",
+                        len(deduped) - len(filtered),
+                        artist,
+                    )
+                deduped = filtered
+            return artist, deduped
 
         fetch_tasks = [fetch_artist(a) for a in artists]
         try:

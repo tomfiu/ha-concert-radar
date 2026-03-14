@@ -7,6 +7,12 @@ import re
 
 from .models import ConcertEvent
 
+# Patterns that indicate a tribute, revival, or cover act rather than the real artist
+_TRIBUTE_PATTERNS = re.compile(
+    r"\b(tribute|revival|salute|cover\s+band)\b",
+    re.IGNORECASE,
+)
+
 
 def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Calculate great-circle distance in km between two lat/lon points."""
@@ -41,3 +47,16 @@ def deduplicate_events(events: list[ConcertEvent]) -> list[ConcertEvent]:
 def km_to_miles(km: float) -> float:
     """Convert kilometers to miles."""
     return round(km * 0.621371, 1)
+
+
+def is_tribute_or_revival(event: ConcertEvent) -> bool:
+    """Return True if the event appears to be a tribute, revival, or cover act.
+
+    Checks the artist name and event name for keywords such as 'tribute',
+    'revival', 'salute', and 'cover band'.
+    """
+    if _TRIBUTE_PATTERNS.search(event.artist):
+        return True
+    if event.event_name and _TRIBUTE_PATTERNS.search(event.event_name):
+        return True
+    return False

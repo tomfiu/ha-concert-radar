@@ -16,6 +16,7 @@ from .api.ticketmaster import TicketmasterClient
 from .const import (
     CONF_ARTISTS,
     CONF_BIT_APP_ID,
+    CONF_IGNORE_TRIBUTE_BANDS,
     CONF_LATITUDE,
     CONF_LONGITUDE,
     CONF_LOOKAHEAD_DAYS,
@@ -26,6 +27,7 @@ from .const import (
     CONF_TM_API_KEY,
     CONF_USE_HA_LOCATION,
     DEFAULT_BANDSINTOWN_APP_ID,
+    DEFAULT_IGNORE_TRIBUTE_BANDS,
     DEFAULT_LOOKAHEAD_DAYS,
     DEFAULT_POLL_INTERVAL_HOURS,
     DEFAULT_RADIUS_KM,
@@ -113,6 +115,9 @@ class ConcertRadarConfigFlow(ConfigFlow, domain=DOMAIN):
                     CONF_LOOKAHEAD_DAYS: user_input.get(
                         CONF_LOOKAHEAD_DAYS, DEFAULT_LOOKAHEAD_DAYS
                     ),
+                    CONF_IGNORE_TRIBUTE_BANDS: user_input.get(
+                        CONF_IGNORE_TRIBUTE_BANDS, DEFAULT_IGNORE_TRIBUTE_BANDS
+                    ),
                 }
 
                 if not user_input.get(CONF_USE_HA_LOCATION, True):
@@ -148,6 +153,10 @@ class ConcertRadarConfigFlow(ConfigFlow, domain=DOMAIN):
                     vol.Optional(
                         CONF_LOOKAHEAD_DAYS, default=DEFAULT_LOOKAHEAD_DAYS
                     ): vol.All(vol.Coerce(int), vol.Range(min=30, max=365)),
+                    vol.Optional(
+                        CONF_IGNORE_TRIBUTE_BANDS,
+                        default=DEFAULT_IGNORE_TRIBUTE_BANDS,
+                    ): bool,
                 }
             ),
             errors=errors,
@@ -189,6 +198,9 @@ class ConcertRadarOptionsFlow(OptionsFlow):
                         CONF_LOOKAHEAD_DAYS: user_input.get(
                             CONF_LOOKAHEAD_DAYS, DEFAULT_LOOKAHEAD_DAYS
                         ),
+                        CONF_IGNORE_TRIBUTE_BANDS: user_input.get(
+                            CONF_IGNORE_TRIBUTE_BANDS, DEFAULT_IGNORE_TRIBUTE_BANDS
+                        ),
                     },
                 )
 
@@ -224,6 +236,12 @@ class ConcertRadarOptionsFlow(OptionsFlow):
                             CONF_LOOKAHEAD_DAYS, DEFAULT_LOOKAHEAD_DAYS
                         ),
                     ): vol.All(vol.Coerce(int), vol.Range(min=30, max=365)),
+                    vol.Optional(
+                        CONF_IGNORE_TRIBUTE_BANDS,
+                        default=current.get(
+                            CONF_IGNORE_TRIBUTE_BANDS, DEFAULT_IGNORE_TRIBUTE_BANDS
+                        ),
+                    ): bool,
                 }
             ),
             errors=errors,
