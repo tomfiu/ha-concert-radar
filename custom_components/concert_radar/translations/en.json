@@ -25,7 +25,8 @@
           "longitude": "Longitude (if not using HA location)",
           "poll_interval": "Poll interval (hours)",
           "notifications": "Enable persistent notifications",
-          "lookahead_days": "Lookahead window (days)"
+          "lookahead_days": "Lookahead window (days)",
+          "ignore_tribute_bands": "Ignore tribute, revival and cover bands"
         }
       }
     },
@@ -48,7 +49,8 @@
           "radius_unit": "Radius unit",
           "poll_interval": "Poll interval (hours)",
           "notifications": "Enable persistent notifications",
-          "lookahead_days": "Lookahead window (days)"
+          "lookahead_days": "Lookahead window (days)",
+          "ignore_tribute_bands": "Ignore tribute, revival and cover bands"
         }
       }
     },
