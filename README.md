@@ -23,6 +23,7 @@ exposing rich sensor data for powerful automations.
 - **Ticket links** — deep links directly to the ticketing page
 - **Dual API coverage** — Ticketmaster + Bandsintown for maximum coverage
 - **Automatic polling** — configurable interval (default: every 6 hours)
+- **Tribute band filtering** — optionally ignore tribute, revival and cover acts
 - **Fully UI configurable** — no YAML required
 - **100% free** — uses free-tier APIs only
 
@@ -65,6 +66,20 @@ exposing rich sensor data for powerful automations.
 7. Click **Finish**
 
 Concert Radar will perform an initial scan immediately after setup.
+
+### Options
+
+All settings can be updated later via **Settings** > **Integrations** > **Concert Radar** > **Configure**.
+
+| Option | Default | Description |
+|---|---|---|
+| Artists | — | Comma-separated list of artists to track |
+| Search radius | 150 km | Maximum distance from your location |
+| Radius unit | km | `km` or `mi` |
+| Poll interval | 6 h | How often to check for new events |
+| Lookahead window | 180 days | How far into the future to search |
+| Enable persistent notifications | on | Show an in-app notification for each new concert |
+| Ignore tribute, revival and cover bands | off | Filter out tribute acts (e.g. "Queen Revival", "Tribute to Taylor Swift") |
 
 ---
 
@@ -184,6 +199,7 @@ content: >
 - Check your Ticketmaster API key is valid (Settings > Integrations > Concert Radar > Configure)
 - Try increasing your search radius
 - Some artists may not be listed on Ticketmaster — Bandsintown fallback handles most of these
+- If **Ignore tribute, revival and cover bands** is enabled, genuine concerts won't be filtered — but double-check the option if results seem unexpectedly empty
 - Run `concert_radar.refresh` to force an immediate poll
 - Check `Settings > System > Logs` for any Concert Radar errors
 
