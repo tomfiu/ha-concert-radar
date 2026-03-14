@@ -42,7 +42,6 @@ ha_calendar.CalendarEntity = type("CalendarEntity", (), {})
 ha_calendar.CalendarEvent = MagicMock()
 
 ha_coordinator = sys.modules["homeassistant.helpers.update_coordinator"]
-ha_coordinator.CoordinatorEntity = type("CoordinatorEntity", (object,), {"__init_subclass__": lambda **kw: None})
 
 
 class _SubscriptableType(type):
@@ -50,6 +49,14 @@ class _SubscriptableType(type):
         return cls
 
 
+def _coordinator_entity_init(self, coordinator, *args, **kwargs):
+    self.coordinator = coordinator
+
+ha_coordinator.CoordinatorEntity = _SubscriptableType(
+    "CoordinatorEntity",
+    (object,),
+    {"__init_subclass__": classmethod(lambda cls, **kw: None), "__init__": _coordinator_entity_init},
+)
 ha_coordinator.DataUpdateCoordinator = _SubscriptableType("DataUpdateCoordinator", (), {})
 ha_coordinator.UpdateFailed = Exception
 

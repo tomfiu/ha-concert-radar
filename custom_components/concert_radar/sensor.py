@@ -18,6 +18,7 @@ from .const import (
     ATTR_DAYS_UNTIL,
     ATTR_DISTANCE_KM,
     ATTR_DISTANCE_MI,
+    ATTR_DISTANCE_UNIT,
     ATTR_EVENT_IMAGE_URL,
     ATTR_EVENT_NAME,
     ATTR_LAST_UPDATED,
@@ -31,6 +32,7 @@ from .const import (
     ATTR_VENUE_LATITUDE,
     ATTR_VENUE_LONGITUDE,
     ATTR_VENUE_NAME,
+    CONF_RADIUS_UNIT,
     DOMAIN,
 )
 from .coordinator import ConcertRadarCoordinator
@@ -53,6 +55,7 @@ async def async_setup_entry(
         entities.append(ConcertRadarUpcomingCountSensor(coordinator, artist))
         entities.append(ConcertRadarVenueNameSensor(coordinator, artist))
         entities.append(ConcertRadarVenueCitySensor(coordinator, artist))
+        entities.append(ConcertRadarDistanceSensor(coordinator, artist))
 
     entities.append(ConcertRadarTotalUpcomingSensor(coordinator))
     entities.append(ConcertRadarLastUpdatedSensor(coordinator))
@@ -251,11 +254,14 @@ class ConcertRadarVenueCitySensor(ConcertRadarBaseSensor):
 
     @property
     def native_value(self) -> str | None:
-        """Return the city of the next concert."""
+        """Return the city and country of the next concert."""
         events = self._get_events()
-        if events:
-            return events[0].venue_city
-        return None
+        if not events:
+            return None
+        event = events[0]
+        if event.venue_country:
+            return f"{event.venue_city}, {event.venue_country}"
+        return event.venue_city
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -269,6 +275,71 @@ class ConcertRadarVenueCitySensor(ConcertRadarBaseSensor):
             ATTR_VENUE_COUNTRY: event.venue_country,
             ATTR_DISTANCE_KM: event.distance_km,
             ATTR_DISTANCE_MI: event.distance_mi,
+        }
+
+    def _get_events(self) -> list[ConcertEvent]:
+        """Get events for the artist."""
+        if not self.coordinator.data:
+            return []
+        return self.coordinator.data.get(self._artist, [])
+
+
+class ConcertRadarDistanceSensor(ConcertRadarBaseSensor):
+    """Sensor showing the distance to the next upcoming concert for an artist."""
+
+    _attr_icon = "mdi:map-marker-distance"
+
+    def __init__(
+        self, coordinator: ConcertRadarCoordinator, artist: str
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self._artist = artist
+        slug = slugify_artist(artist)
+        self._attr_unique_id = f"{DOMAIN}_{slug}_distance"
+        self._attr_name = f"{artist} Concert Distance"
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the distance to the next concert in the configured unit."""
+        events = self._get_events()
+        if not events:
+            return None
+        event = events[0]
+        unit = self.coordinator.config_entry.options.get(
+            CONF_RADIUS_UNIT,
+            self.coordinator.config_entry.data.get(CONF_RADIUS_UNIT, "km"),
+        )
+        return round(event.distance_mi if unit == "mi" else event.distance_km, 1)
+
+    @property
+    def native_unit_of_measurement(self) -> str:
+        """Return the unit of measurement based on configuration."""
+        unit = self.coordinator.config_entry.options.get(
+            CONF_RADIUS_UNIT,
+            self.coordinator.config_entry.data.get(CONF_RADIUS_UNIT, "km"),
+        )
+        return unit
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return sensor attributes."""
+        events = self._get_events()
+        if not events:
+            return {ATTR_ARTIST: self._artist}
+        event = events[0]
+        unit = self.coordinator.config_entry.options.get(
+            CONF_RADIUS_UNIT,
+            self.coordinator.config_entry.data.get(CONF_RADIUS_UNIT, "km"),
+        )
+        return {
+            ATTR_ARTIST: self._artist,
+            ATTR_DISTANCE_KM: event.distance_km,
+            ATTR_DISTANCE_MI: event.distance_mi,
+            ATTR_DISTANCE_UNIT: unit,
+            ATTR_VENUE_NAME: event.venue_name,
+            ATTR_VENUE_CITY: event.venue_city,
+            ATTR_VENUE_COUNTRY: event.venue_country,
         }
 
     def _get_events(self) -> list[ConcertEvent]:
