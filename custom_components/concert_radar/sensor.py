@@ -51,6 +51,8 @@ async def async_setup_entry(
     for artist in coordinator.artists:
         entities.append(ConcertRadarNextConcertSensor(coordinator, artist))
         entities.append(ConcertRadarUpcomingCountSensor(coordinator, artist))
+        entities.append(ConcertRadarVenueNameSensor(coordinator, artist))
+        entities.append(ConcertRadarVenueCitySensor(coordinator, artist))
 
     entities.append(ConcertRadarTotalUpcomingSensor(coordinator))
     entities.append(ConcertRadarLastUpdatedSensor(coordinator))
@@ -186,6 +188,94 @@ class ConcertRadarUpcomingCountSensor(ConcertRadarBaseSensor):
             for e in events
         ]
         return {ATTR_ARTIST: self._artist, ATTR_CONCERTS: concerts}
+
+
+class ConcertRadarVenueNameSensor(ConcertRadarBaseSensor):
+    """Sensor showing the venue name of the next upcoming concert for an artist."""
+
+    _attr_icon = "mdi:map-marker"
+
+    def __init__(
+        self, coordinator: ConcertRadarCoordinator, artist: str
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self._artist = artist
+        slug = slugify_artist(artist)
+        self._attr_unique_id = f"{DOMAIN}_{slug}_venue_name"
+        self._attr_name = f"{artist} Venue"
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the venue name of the next concert."""
+        events = self._get_events()
+        if events:
+            return events[0].venue_name
+        return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return sensor attributes."""
+        events = self._get_events()
+        if not events:
+            return {ATTR_ARTIST: self._artist}
+        event = events[0]
+        return {
+            ATTR_ARTIST: self._artist,
+            ATTR_VENUE_LATITUDE: event.venue_latitude,
+            ATTR_VENUE_LONGITUDE: event.venue_longitude,
+            ATTR_VENUE_COUNTRY: event.venue_country,
+        }
+
+    def _get_events(self) -> list[ConcertEvent]:
+        """Get events for the artist."""
+        if not self.coordinator.data:
+            return []
+        return self.coordinator.data.get(self._artist, [])
+
+
+class ConcertRadarVenueCitySensor(ConcertRadarBaseSensor):
+    """Sensor showing the city of the next upcoming concert for an artist."""
+
+    _attr_icon = "mdi:city-variant-outline"
+
+    def __init__(
+        self, coordinator: ConcertRadarCoordinator, artist: str
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self._artist = artist
+        slug = slugify_artist(artist)
+        self._attr_unique_id = f"{DOMAIN}_{slug}_venue_city"
+        self._attr_name = f"{artist} City"
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the city of the next concert."""
+        events = self._get_events()
+        if events:
+            return events[0].venue_city
+        return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return sensor attributes."""
+        events = self._get_events()
+        if not events:
+            return {ATTR_ARTIST: self._artist}
+        event = events[0]
+        return {
+            ATTR_ARTIST: self._artist,
+            ATTR_VENUE_COUNTRY: event.venue_country,
+            ATTR_DISTANCE_KM: event.distance_km,
+            ATTR_DISTANCE_MI: event.distance_mi,
+        }
+
+    def _get_events(self) -> list[ConcertEvent]:
+        """Get events for the artist."""
+        if not self.coordinator.data:
+            return []
+        return self.coordinator.data.get(self._artist, [])
 
 
 class ConcertRadarTotalUpcomingSensor(ConcertRadarBaseSensor):
