@@ -1,0 +1,67 @@
+blueprint:
+  name: "Concert Radar: Concert Reminder"
+  description: >
+    Send a notification a chosen number of days before a tracked artist's
+    next concert.  Uses the `sensor.<artist>_days_until_concert` sensor
+    created by Concert Radar.
+  domain: automation
+  input:
+    artist_days_sensor:
+      name: Days Until Concert sensor
+      description: >
+        The `sensor.<artist>_days_until_concert` sensor for the artist you want
+        to be reminded about (e.g. `sensor.radiohead_days_until_concert`).
+      selector:
+        entity:
+          domain: sensor
+          integration: concert_radar
+    days_before:
+      name: Days before the concert
+      description: >
+        How many days in advance should the reminder be sent?
+      default: 7
+      selector:
+        number:
+          min: 1
+          max: 60
+          unit_of_measurement: days
+    notify_target:
+      name: Notification target
+      description: >
+        The `notify.*` service to call, e.g. `notify.mobile_app_my_phone`.
+      selector:
+        text:
+    notification_title:
+      name: Notification title
+      description: Title of the reminder notification.
+      default: "Concert reminder 🎵"
+      selector:
+        text:
+
+trigger:
+  - platform: numeric_state
+    entity_id: !input artist_days_sensor
+    below: !input days_before
+    above: 0
+
+condition:
+  # Only fire once per day (prevents repeated triggers within the same day)
+  - condition: template
+    value_template: >
+      {{ now().hour == 9 and now().minute < 5 }}
+
+action:
+  - service: !input notify_target
+    data:
+      title: !input notification_title
+      message: >
+        {{ state_attr(trigger.entity_id, 'artist') }} is playing at
+        {{ state_attr(trigger.entity_id, 'venue_name') }},
+        {{ state_attr(trigger.entity_id, 'venue_city') }}
+        in {{ states(trigger.entity_id) }} day(s)
+        ({{ state_attr(trigger.entity_id, 'event_date') | as_datetime | as_local | strftime('%B %-d') }}).
+        {% if state_attr(trigger.entity_id, 'ticket_url') %}
+        Tickets: {{ state_attr(trigger.entity_id, 'ticket_url') }}
+        {% endif %}
+
+mode: single

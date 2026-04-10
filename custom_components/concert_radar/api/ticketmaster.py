@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta, timezone
 
-from aiohttp import ClientSession, ClientError
+from aiohttp import ClientSession
 
 from ..models import ConcertEvent
 from ..utils import haversine
@@ -54,27 +54,23 @@ class TicketmasterClient(BaseConcertAPIClient):
                 "apikey": self._api_key,
             }
 
+            resp = await self._get_with_retry(
+                f"{BASE_URL}/events.json",
+                params=params,
+                timeout=30,
+                abort_statuses=(401,),
+            )
+            if resp is None:
+                break
+            if resp.status == 401:
+                _LOGGER.error("Invalid Ticketmaster API key")
+                break
+            if resp.status != 200:
+                break
             try:
-                async with self._session.get(
-                    f"{BASE_URL}/events.json",
-                    params=params,
-                    timeout=30,
-                ) as resp:
-                    if resp.status == 429:
-                        _LOGGER.warning("Ticketmaster rate limit reached")
-                        break
-                    if resp.status == 401:
-                        _LOGGER.error("Invalid Ticketmaster API key")
-                        break
-                    if resp.status != 200:
-                        _LOGGER.warning(
-                            "Ticketmaster API returned status %s", resp.status
-                        )
-                        break
-
-                    data = await resp.json()
-            except (ClientError, TimeoutError) as err:
-                _LOGGER.warning("Ticketmaster API request failed: %s", err)
+                data = await resp.json()
+            except Exception as err:  # noqa: BLE001
+                _LOGGER.warning("Failed to parse Ticketmaster response: %s", err)
                 break
 
             embedded = data.get("_embedded")

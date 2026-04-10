@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, date
 from typing import Any
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
@@ -22,6 +22,7 @@ from .const import (
     ATTR_EVENT_IMAGE_URL,
     ATTR_EVENT_NAME,
     ATTR_LAST_UPDATED,
+    ATTR_LINEUP,
     ATTR_ON_SALE,
     ATTR_PRICE_MAX,
     ATTR_PRICE_MIN,
@@ -56,9 +57,12 @@ async def async_setup_entry(
         entities.append(ConcertRadarVenueNameSensor(coordinator, artist))
         entities.append(ConcertRadarVenueCitySensor(coordinator, artist))
         entities.append(ConcertRadarDistanceSensor(coordinator, artist))
+        entities.append(ConcertRadarDaysUntilSensor(coordinator, artist))
 
     entities.append(ConcertRadarTotalUpcomingSensor(coordinator))
     entities.append(ConcertRadarLastUpdatedSensor(coordinator))
+    entities.append(ConcertRadarNextConcertOverallSensor(coordinator))
+    entities.append(ConcertRadarWeeklyDigestSensor(coordinator))
 
     async_add_entities(entities)
 
@@ -410,3 +414,168 @@ class ConcertRadarLastUpdatedSensor(ConcertRadarBaseSensor):
     def native_value(self) -> datetime | None:
         """Return the last update time."""
         return self.coordinator.last_update_success_time
+
+
+class ConcertRadarDaysUntilSensor(ConcertRadarBaseSensor):
+    """Sensor for the number of days until the next concert for an artist."""
+
+    _attr_icon = "mdi:calendar-clock"
+    _attr_native_unit_of_measurement = "days"
+
+    def __init__(
+        self, coordinator: ConcertRadarCoordinator, artist: str
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self._artist = artist
+        slug = slugify_artist(artist)
+        self._attr_unique_id = f"{DOMAIN}_{slug}_days_until"
+        self._attr_name = f"{artist} Days Until Concert"
+
+    @property
+    def native_value(self) -> int | None:
+        """Return days until the next concert, or None if no concert found."""
+        events = self._get_events()
+        if not events:
+            return None
+        return events[0].days_until
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return sensor attributes."""
+        events = self._get_events()
+        if not events:
+            return {ATTR_ARTIST: self._artist}
+        event = events[0]
+        return {
+            ATTR_ARTIST: self._artist,
+            ATTR_EVENT_NAME: event.event_name,
+            ATTR_VENUE_NAME: event.venue_name,
+            ATTR_VENUE_CITY: event.venue_city,
+            "event_date": event.event_date.isoformat(),
+        }
+
+    def _get_events(self) -> list[ConcertEvent]:
+        """Get events for the artist."""
+        if not self.coordinator.data:
+            return []
+        return self.coordinator.data.get(self._artist, [])
+
+
+class ConcertRadarNextConcertOverallSensor(ConcertRadarBaseSensor):
+    """Sensor for the soonest upcoming concert across all tracked artists."""
+
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_icon = "mdi:music-circle-outline"
+
+    def __init__(self, coordinator: ConcertRadarCoordinator) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{DOMAIN}_next_concert_overall"
+        self._attr_name = "Next Concert Overall"
+
+    def _get_soonest(self) -> ConcertEvent | None:
+        """Return the soonest concert across all artists."""
+        if not self.coordinator.data:
+            return None
+        soonest: ConcertEvent | None = None
+        for events in self.coordinator.data.values():
+            if events and (soonest is None or events[0].event_date < soonest.event_date):
+                soonest = events[0]
+        return soonest
+
+    @property
+    def native_value(self) -> datetime | None:
+        """Return the date of the soonest concert."""
+        event = self._get_soonest()
+        return event.event_date if event else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return sensor attributes."""
+        event = self._get_soonest()
+        if not event:
+            return {}
+        attrs: dict[str, Any] = {
+            ATTR_ARTIST: event.artist,
+            ATTR_EVENT_NAME: event.event_name,
+            ATTR_VENUE_NAME: event.venue_name,
+            ATTR_VENUE_CITY: event.venue_city,
+            ATTR_VENUE_COUNTRY: event.venue_country,
+            ATTR_DISTANCE_KM: event.distance_km,
+            ATTR_DISTANCE_MI: event.distance_mi,
+            ATTR_TICKET_URL: event.ticket_url,
+            ATTR_DAYS_UNTIL: event.days_until,
+            ATTR_ON_SALE: event.on_sale,
+            ATTR_SOURCE: event.source,
+        }
+        if event.price_min is not None:
+            attrs[ATTR_PRICE_MIN] = event.price_min
+        if event.price_max is not None:
+            attrs[ATTR_PRICE_MAX] = event.price_max
+        if event.currency:
+            attrs[ATTR_CURRENCY] = event.currency
+        return attrs
+
+
+class ConcertRadarWeeklyDigestSensor(ConcertRadarBaseSensor):
+    """Sensor with a count and formatted digest of concerts in the next 7 days."""
+
+    _attr_icon = "mdi:newspaper-variant-outline"
+    _attr_native_unit_of_measurement = "concerts"
+
+    def __init__(self, coordinator: ConcertRadarCoordinator) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{DOMAIN}_weekly_digest"
+        self._attr_name = "Weekly Concert Digest"
+
+    def _get_week_events(self) -> list[ConcertEvent]:
+        """Return all concerts in the next 7 days, sorted by date."""
+        if not self.coordinator.data:
+            return []
+        upcoming: list[ConcertEvent] = []
+        for events in self.coordinator.data.values():
+            for event in events:
+                if 0 <= event.days_until <= 7:
+                    upcoming.append(event)
+        upcoming.sort(key=lambda e: e.event_date)
+        return upcoming
+
+    @property
+    def native_value(self) -> int:
+        """Return the count of concerts in the next 7 days."""
+        return len(self._get_week_events())
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return digest text and structured list."""
+        events = self._get_week_events()
+        lines: list[str] = ["## Upcoming Concerts (Next 7 Days)\n"]
+        if not events:
+            lines.append("No concerts this week.")
+        else:
+            for event in events:
+                day_label = "Today" if event.days_until == 0 else f"in {event.days_until} day{'s' if event.days_until != 1 else ''}"
+                lines.append(
+                    f"**{event.artist}** — {event.venue_name}, {event.venue_city} ({day_label})"
+                )
+                if event.ticket_url:
+                    lines.append(f"  [Get Tickets]({event.ticket_url})")
+
+        concerts_list = [
+            {
+                ATTR_ARTIST: e.artist,
+                "event_date": e.event_date.isoformat(),
+                ATTR_VENUE_NAME: e.venue_name,
+                ATTR_VENUE_CITY: e.venue_city,
+                ATTR_DAYS_UNTIL: e.days_until,
+                ATTR_TICKET_URL: e.ticket_url,
+                ATTR_ON_SALE: e.on_sale,
+            }
+            for e in events
+        ]
+        return {
+            "digest": "\n".join(lines),
+            "concerts_this_week": concerts_list,
+        }

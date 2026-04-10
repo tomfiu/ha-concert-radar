@@ -27,6 +27,7 @@ CONF_BAND_IGNORE_LIST = "band_ignore_list"
 
 EVENT_NEW_CONCERT = "concert_radar_new_concert"
 EVENT_ARTIST_ON_TOUR = "concert_radar_artist_on_tour"
+EVENT_TICKET_SALE_STARTS = "concert_radar_ticket_sale_starts"
 
 ATTR_ARTIST = "artist"
 ATTR_EVENT_NAME = "event_name"
@@ -48,3 +49,4 @@ ATTR_SOURCE = "source"
 ATTR_CONCERTS = "concerts"
 ATTR_LAST_UPDATED = "last_updated"
 ATTR_DISTANCE_UNIT = "unit"
+ATTR_LINEUP = "lineup"

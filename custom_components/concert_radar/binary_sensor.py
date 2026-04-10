@@ -10,7 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import ATTR_ARTIST, ATTR_DAYS_UNTIL, DOMAIN
+from .const import ATTR_ARTIST, ATTR_DAYS_UNTIL, ATTR_EVENT_NAME, ATTR_TICKET_URL, ATTR_VENUE_CITY, ATTR_VENUE_NAME, DOMAIN
 from .coordinator import ConcertRadarCoordinator
 from .utils import slugify_artist
 
@@ -29,8 +29,12 @@ async def async_setup_entry(
         entities.append(
             ConcertRadarHasNearbyConcertBinarySensor(coordinator, artist)
         )
+        entities.append(
+            ConcertRadarTicketsOnSaleBinarySensor(coordinator, artist)
+        )
 
     entities.append(ConcertRadarAnyNearbyConcertBinarySensor(coordinator))
+    entities.append(ConcertRadarApiHealthyBinarySensor(coordinator))
 
     async_add_entities(entities)
 
@@ -131,3 +135,79 @@ class ConcertRadarAnyNearbyConcertBinarySensor(ConcertRadarBaseBinarySensor):
             if events
         ]
         return {"artists_with_concerts": artists_with_concerts}
+
+
+class ConcertRadarTicketsOnSaleBinarySensor(ConcertRadarBaseBinarySensor):
+    """Binary sensor indicating whether tickets for the next concert are on sale."""
+
+    def __init__(
+        self, coordinator: ConcertRadarCoordinator, artist: str
+    ) -> None:
+        """Initialize the binary sensor."""
+        super().__init__(coordinator)
+        self._artist = artist
+        slug = slugify_artist(artist)
+        self._attr_unique_id = f"{DOMAIN}_{slug}_tickets_on_sale"
+        self._attr_name = f"{artist} Tickets On Sale"
+
+    @property
+    def is_on(self) -> bool:
+        """Return true if tickets for the next concert are currently on sale."""
+        if not self.coordinator.data:
+            return False
+        events = self.coordinator.data.get(self._artist, [])
+        return bool(events and events[0].on_sale)
+
+    @property
+    def icon(self) -> str:
+        """Return the icon."""
+        return "mdi:ticket-confirmation" if self.is_on else "mdi:ticket-outline"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return sensor attributes."""
+        attrs: dict[str, Any] = {ATTR_ARTIST: self._artist}
+        if self.coordinator.data:
+            events = self.coordinator.data.get(self._artist, [])
+            if events:
+                event = events[0]
+                attrs[ATTR_EVENT_NAME] = event.event_name
+                attrs["event_date"] = event.event_date.isoformat()
+                attrs[ATTR_VENUE_NAME] = event.venue_name
+                attrs[ATTR_VENUE_CITY] = event.venue_city
+                attrs[ATTR_TICKET_URL] = event.ticket_url
+                attrs[ATTR_DAYS_UNTIL] = event.days_until
+        return attrs
+
+
+class ConcertRadarApiHealthyBinarySensor(ConcertRadarBaseBinarySensor):
+    """Binary sensor indicating whether the Concert Radar API connections are healthy."""
+
+    _attr_icon = "mdi:cloud-check-outline"
+
+    def __init__(self, coordinator: ConcertRadarCoordinator) -> None:
+        """Initialize the binary sensor."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{DOMAIN}_api_healthy"
+        self._attr_name = "API Healthy"
+
+    @property
+    def is_on(self) -> bool:
+        """Return true if the last coordinator update succeeded."""
+        return self.coordinator.last_update_success
+
+    @property
+    def icon(self) -> str:
+        """Return the icon."""
+        return "mdi:cloud-check-outline" if self.is_on else "mdi:cloud-off-outline"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return sensor attributes."""
+        return {
+            "last_successful_update": (
+                self.coordinator.last_update_success_time.isoformat()
+                if self.coordinator.last_update_success_time
+                else None
+            ),
+        }
