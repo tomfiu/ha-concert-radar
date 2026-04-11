@@ -39,6 +39,7 @@ from .const import (
     DOMAIN,
     EVENT_ARTIST_ON_TOUR,
     EVENT_NEW_CONCERT,
+    EVENT_TICKET_SALE_STARTS,
 )
 from .models import ConcertEvent
 from .utils import deduplicate_events, is_in_ignore_list, is_tribute_or_revival
@@ -67,6 +68,8 @@ class ConcertRadarCoordinator(DataUpdateCoordinator[dict[str, list[ConcertEvent]
         )
         self._previous_event_keys: set[str] = set()
         self._previous_artist_states: dict[str, bool] = {}
+        # dedup_key -> previous on_sale state for ticket-sale-starts events
+        self._previous_on_sale_states: dict[str, bool] = {}
 
         poll_interval = self._config.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL_HOURS)
 
@@ -181,6 +184,7 @@ class ConcertRadarCoordinator(DataUpdateCoordinator[dict[str, list[ConcertEvent]
                         "distance_mi": event.distance_mi,
                         "ticket_url": event.ticket_url,
                         "source": event.source,
+                        "lineup": event.lineup,
                     },
                 )
 
@@ -197,6 +201,33 @@ class ConcertRadarCoordinator(DataUpdateCoordinator[dict[str, list[ConcertEvent]
                             "next_concert_date": events[0].event_date.isoformat(),
                         },
                     )
+
+            # Fire ticket_sale_starts events when on_sale transitions False -> True
+            for events in results.values():
+                for event in events:
+                    was_on_sale = self._previous_on_sale_states.get(event.dedup_key)
+                    is_on_sale = event.on_sale is True
+                    if is_on_sale and not was_on_sale:
+                        self.hass.bus.async_fire(
+                            EVENT_TICKET_SALE_STARTS,
+                            {
+                                "artist": event.artist,
+                                "event_name": event.event_name,
+                                "event_date": event.event_date.isoformat(),
+                                "venue_name": event.venue_name,
+                                "venue_city": event.venue_city,
+                                "ticket_url": event.ticket_url,
+                                "days_until": event.days_until,
+                                "price_min": event.price_min,
+                                "currency": event.currency,
+                            },
+                        )
+                        _LOGGER.info(
+                            "Tickets now on sale for %s at %s on %s",
+                            event.artist,
+                            event.venue_name,
+                            event.event_date.strftime("%Y-%m-%d"),
+                        )
 
             # Create persistent notifications if enabled
             if self._config.get(CONF_NOTIFICATIONS, True) and all_new_events:
@@ -224,6 +255,11 @@ class ConcertRadarCoordinator(DataUpdateCoordinator[dict[str, list[ConcertEvent]
         }
         self._previous_artist_states = {
             artist: len(events) > 0 for artist, events in results.items()
+        }
+        self._previous_on_sale_states = {
+            e.dedup_key: (e.on_sale is True)
+            for events in results.values()
+            for e in events
         }
 
         return results

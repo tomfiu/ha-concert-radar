@@ -1,0 +1,57 @@
+blueprint:
+  name: "Concert Radar: Tickets On Sale Alert"
+  description: >
+    Send a notification the moment tickets go on sale for a tracked artist.
+    Triggered by the `concert_radar_ticket_sale_starts` event fired by Concert Radar.
+  domain: automation
+  input:
+    artist_filter:
+      name: Artist name filter (optional)
+      description: >
+        Leave blank to alert for any artist. Enter an artist name to restrict
+        alerts to that artist only (case-insensitive, exact match).
+      default: ""
+      selector:
+        text:
+    notify_target:
+      name: Notification target
+      description: >
+        The `notify.*` service to call, e.g. `notify.mobile_app_my_phone`.
+      selector:
+        text:
+    notification_title:
+      name: Notification title
+      description: Title of the on-sale notification.
+      default: "Tickets on sale now! 🎟️"
+      selector:
+        text:
+
+trigger:
+  - platform: event
+    event_type: concert_radar_ticket_sale_starts
+
+condition:
+  - condition: template
+    value_template: >
+      {% set filter = '{{ artist_filter }}' | trim | lower %}
+      {% set artist = trigger.event.data.artist | lower %}
+      {{ filter == '' or filter == artist }}
+
+action:
+  - service: !input notify_target
+    data:
+      title: !input notification_title
+      message: >
+        Tickets are now on sale for {{ trigger.event.data.artist }} at
+        {{ trigger.event.data.venue_name }}, {{ trigger.event.data.venue_city }}
+        on {{ trigger.event.data.event_date | as_datetime | as_local | strftime('%B %-d, %Y') }}
+        ({{ trigger.event.data.days_until }} days away).
+        {% if trigger.event.data.price_min %}
+        Starting from {{ trigger.event.data.currency }} {{ trigger.event.data.price_min }}.
+        {% endif %}
+        {% if trigger.event.data.ticket_url %}
+        {{ trigger.event.data.ticket_url }}
+        {% endif %}
+
+mode: parallel
+max: 10
